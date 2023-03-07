@@ -1,4 +1,4 @@
-version: '3.3'
+version: "3.3"
 
 services:
   influxdb:
@@ -30,7 +30,6 @@ services:
     depends_on:
       - influxdb
 
-
   speedtest:
     build: ./docker/speedtest/
     image: speedtest:0.0.1
@@ -38,17 +37,6 @@ services:
     container_name: speedtest
     depends_on:
       - influxdb
-
-#  speedtest:
-#    restart: always
-#    image: gnand:speedtest
-#    container_name: speedtest
-#    environment:
-#      - "SPEEDTEST_INTERVAL=${SPEEDTEST_SPEEDTEST_INTERVAL}"
-#      - "SPEEDTEST_HOST=${SPEEDTEST_HOST}"
-#      - "SPEEDTEST_SERVER=${SPEEDTEST_SERVER}"
-#    depends_on:
-#      - influxdb
 
 volumes:
   influxdb:

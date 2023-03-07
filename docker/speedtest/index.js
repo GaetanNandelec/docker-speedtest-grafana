@@ -2,23 +2,22 @@ const execa = require("execa");
 const Influx = require("influx");
 const delay = require("delay");
 
-process.env.INFLUXDB_HOST = (process.env.INFLUXDB_HOST) ? process.env.INFLUXDB_HOST : 'influxdb';
-process.env.INFLUXDB_DB = (process.env.INFLUXDB_DB) ? process.env.INFLUXDB_DB : 'speedtest';
-process.env.INFLUXDB_USERNAME = (process.env.INFLUXDB_USERNAME) ? process.env.INFLUXDB_USERNAME : 'root';
-process.env.INFLUXDB_PASSWORD = (process.env.INFLUXDB_PASSWORD) ? process.env.INFLUXDB_PASSWORD : 'root';
-process.env.SPEEDTEST_HOST = (process.env.SPEEDTEST_HOST) ? process.env.SPEEDTEST_HOST : 'local';
-process.env.SPEEDTEST_INTERVAL = (process.env.SPEEDTEST_INTERVAL) ? process.env.SPEEDTEST_INTERVAL : 3600;
-process.env.SPEEDTEST_SERVER = (process.env.SPEEDTEST_SERVER);
+process.env.INFLUXDB_HOST = process.env.INFLUXDB_HOST ? process.env.INFLUXDB_HOST : "influxdb";
+process.env.INFLUXDB_DB = process.env.INFLUXDB_DB ? process.env.INFLUXDB_DB : "speedtest";
+process.env.INFLUXDB_USERNAME = process.env.INFLUXDB_USERNAME ? process.env.INFLUXDB_USERNAME : "root";
+process.env.INFLUXDB_PASSWORD = process.env.INFLUXDB_PASSWORD ? process.env.INFLUXDB_PASSWORD : "root";
+process.env.SPEEDTEST_HOST = process.env.SPEEDTEST_HOST ? process.env.SPEEDTEST_HOST : "local";
+process.env.SPEEDTEST_INTERVAL = process.env.SPEEDTEST_INTERVAL ? process.env.SPEEDTEST_INTERVAL : 3600;
+process.env.SPEEDTEST_SERVER = process.env.SPEEDTEST_SERVER;
 
-const bitToMbps = bit => (bit / 1000 / 1000) * 8;
+const bitToMbps = (bit) => (bit / 1000 / 1000) * 8;
 
-const log = (message, severity = "Info") =>
-  console.log(`[${severity.toUpperCase()}][${new Date()}] ${message}`);
+const log = (message, severity = "Info") => console.log(`[${severity.toUpperCase()}][${new Date()}] ${message}`);
 
 const getSpeedMetrics = async () => {
-  const args = (process.env.SPEEDTEST_SERVER) ?
-    [ "--accept-license", "--accept-gdpr", "-f", "json", "--server-id=" + process.env.SPEEDTEST_SERVER] :
-    [ "--accept-license", "--accept-gdpr", "-f", "json" ];
+  const args = process.env.SPEEDTEST_SERVER
+    ? ["--progress=no", "--accept-license", "--accept-gdpr", "-f", "json", "--server-id=" + process.env.SPEEDTEST_SERVER]
+    : ["--progress=no", "--accept-license", "--accept-gdpr", "-f", "json"];
 
   const { stdout } = await execa("speedtest", args);
   const result = JSON.parse(stdout);
@@ -26,7 +25,7 @@ const getSpeedMetrics = async () => {
     upload: bitToMbps(result.upload.bandwidth),
     download: bitToMbps(result.download.bandwidth),
     ping: result.ping.latency,
-    jitter: result.ping.jitter  
+    jitter: result.ping.jitter,
   };
 };
 
@@ -34,7 +33,7 @@ const pushToInflux = async (influx, metrics) => {
   const points = Object.entries(metrics).map(([measurement, value]) => ({
     measurement,
     tags: { host: process.env.SPEEDTEST_HOST },
-    fields: { value }
+    fields: { value },
   }));
 
   await influx.writePoints(points);
@@ -52,9 +51,7 @@ const pushToInflux = async (influx, metrics) => {
     while (true) {
       log("Starting speedtest...");
       const speedMetrics = await getSpeedMetrics();
-      log(
-        `Speedtest results - Download: ${speedMetrics.download}, Upload: ${speedMetrics.upload}, Ping: ${speedMetrics.ping}, Jitter: ${speedMetrics.jitter}`
-      );
+      log(`Speedtest results - Download: ${speedMetrics.download}, Upload: ${speedMetrics.upload}, Ping: ${speedMetrics.ping}, Jitter: ${speedMetrics.jitter}`);
       await pushToInflux(influx, speedMetrics);
 
       log(`Sleeping for ${process.env.SPEEDTEST_INTERVAL} seconds...`);
